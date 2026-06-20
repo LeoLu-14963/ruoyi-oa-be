@@ -14,9 +14,19 @@ run/
 # 保留手写的类型定义，只忽略自动生成的
 typings/**/*.js
 typings/**/package.json
+# 忽略自动生成的 typings 文件
+typings/**/*.d.ts
 .nyc_output/
 
 /app/public/uploads/*
 !/app/public/uploads/.gitkeep
 /cache/*
 !/cache/.gitkeep
+
+# 忽略自动生成的数据库 mapper 文件
+app/service/db/mysql/ruoyi/*.js
+app/service/db/pgsql/ruoyi/*.js
+app/service/db/sqlite/ruoyi/*.js
+
+# 忽略本地配置文件（包含密码等敏感信息）
+config/config.local.js

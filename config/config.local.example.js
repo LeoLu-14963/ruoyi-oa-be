@@ -6,7 +6,7 @@
  * @Description:
  * @Site: https://www.undsky.com
  */
-/* eslint valid-jsdoc: 'off' */
+/* eslint valid-jsdoc: "off" */
 
 /**
  * @param {Egg.EggAppInfo} appInfo app info
@@ -23,18 +23,18 @@ module.exports = (appInfo) => {
     camelCase: true,
     clients: {
       ruoyi: {
-        host: '127.0.0.1',
-        user: 'root',
-        password: 'root123',
-        database: 'ruoyi_oa',
+        host: "127.0.0.1",
+        user: "root",
+        password: "jyx123",
+        database: "ruoyi",
       },
     },
   };
 
   const redis = {
     port: 6379,
-    host: '127.0.0.1',
-    password: '',
+    host: "127.0.0.1",
+    password: "",
     db: 6,
   };
 
@@ -46,7 +46,7 @@ module.exports = (appInfo) => {
   config.sqlite = {
     clients: {
       ruoyi: {
-        path: './cache/ruoyi.db',
+        path: "./cache/ruoyi.db",
       },
     },
     // 启用驼峰命名转换
@@ -62,7 +62,7 @@ module.exports = (appInfo) => {
       attempts: 3,
       // 失败后延迟重试时间（毫秒）
       backoff: {
-        type: 'fixed',
+        type: "fixed",
         delay: 5000,
       },
       // 移除已完成的任务
@@ -74,8 +74,8 @@ module.exports = (appInfo) => {
 
   // 本地开发环境日志配置（只记录错误日志）
   config.logger = {
-    level: 'ERROR', // 只记录 ERROR 级别到文件
-    consoleLevel: 'INFO', // 控制台使用 INFO 级别
+    level: "ERROR", // 只记录 ERROR 级别到文件
+    consoleLevel: "INFO", // 控制台使用 INFO 级别
     disableConsoleAfterReady: false, // 保持控制台输出
   };
 

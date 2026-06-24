@@ -16,6 +16,12 @@ import ExportMonitorLogininfor = require('../../../app/service/monitor/logininfo
 import ExportMonitorOnline = require('../../../app/service/monitor/online');
 import ExportMonitorOperlog = require('../../../app/service/monitor/operlog');
 import ExportMonitorServer = require('../../../app/service/monitor/server');
+import ExportOaFlow = require('../../../app/service/oa/flow');
+import ExportOaNode = require('../../../app/service/oa/node');
+import ExportOaOrder = require('../../../app/service/oa/order');
+import ExportOaPurchase = require('../../../app/service/oa/purchase');
+import ExportOaRecord = require('../../../app/service/oa/record');
+import ExportOaSupplier = require('../../../app/service/oa/supplier');
 import ExportSystemConfig = require('../../../app/service/system/config');
 import ExportSystemDept = require('../../../app/service/system/dept');
 import ExportSystemDictData = require('../../../app/service/system/dictData');
@@ -31,6 +37,12 @@ import ExportToolGen = require('../../../app/service/tool/gen');
 import ExportToolSwagger = require('../../../app/service/tool/swagger');
 import ExportDbMysqlRuoyiGenTableColumnMapper = require('../../../app/service/db/mysql/ruoyi/GenTableColumnMapper');
 import ExportDbMysqlRuoyiGenTableMapper = require('../../../app/service/db/mysql/ruoyi/GenTableMapper');
+import ExportDbMysqlRuoyiOaApprovalFlowMapper = require('../../../app/service/db/mysql/ruoyi/OaApprovalFlowMapper');
+import ExportDbMysqlRuoyiOaApprovalNodeMapper = require('../../../app/service/db/mysql/ruoyi/OaApprovalNodeMapper');
+import ExportDbMysqlRuoyiOaApprovalRecordMapper = require('../../../app/service/db/mysql/ruoyi/OaApprovalRecordMapper');
+import ExportDbMysqlRuoyiOaPurchaseMapper = require('../../../app/service/db/mysql/ruoyi/OaPurchaseMapper');
+import ExportDbMysqlRuoyiOaPurchaseOrderMapper = require('../../../app/service/db/mysql/ruoyi/OaPurchaseOrderMapper');
+import ExportDbMysqlRuoyiOaSupplierMapper = require('../../../app/service/db/mysql/ruoyi/OaSupplierMapper');
 import ExportDbMysqlRuoyiSysConfigMapper = require('../../../app/service/db/mysql/ruoyi/SysConfigMapper');
 import ExportDbMysqlRuoyiSysDeptMapper = require('../../../app/service/db/mysql/ruoyi/SysDeptMapper');
 import ExportDbMysqlRuoyiSysDictDataMapper = require('../../../app/service/db/mysql/ruoyi/SysDictDataMapper');
@@ -100,6 +112,14 @@ declare module 'egg' {
       operlog: AutoInstanceType<typeof ExportMonitorOperlog>;
       server: AutoInstanceType<typeof ExportMonitorServer>;
     }
+    oa: {
+      flow: AutoInstanceType<typeof ExportOaFlow>;
+      node: AutoInstanceType<typeof ExportOaNode>;
+      order: AutoInstanceType<typeof ExportOaOrder>;
+      purchase: AutoInstanceType<typeof ExportOaPurchase>;
+      record: AutoInstanceType<typeof ExportOaRecord>;
+      supplier: AutoInstanceType<typeof ExportOaSupplier>;
+    }
     system: {
       config: AutoInstanceType<typeof ExportSystemConfig>;
       dept: AutoInstanceType<typeof ExportSystemDept>;
@@ -122,6 +142,12 @@ declare module 'egg' {
         ruoyi: {
           genTableColumnMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiGenTableColumnMapper>;
           genTableMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiGenTableMapper>;
+          oaApprovalFlowMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaApprovalFlowMapper>;
+          oaApprovalNodeMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaApprovalNodeMapper>;
+          oaApprovalRecordMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaApprovalRecordMapper>;
+          oaPurchaseMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaPurchaseMapper>;
+          oaPurchaseOrderMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaPurchaseOrderMapper>;
+          oaSupplierMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiOaSupplierMapper>;
           sysConfigMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiSysConfigMapper>;
           sysDeptMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiSysDeptMapper>;
           sysDictDataMapper: AutoInstanceType<typeof ExportDbMysqlRuoyiSysDictDataMapper>;

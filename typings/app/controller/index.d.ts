@@ -13,6 +13,12 @@ import ExportMonitorLogininfor = require('../../../app/controller/monitor/logini
 import ExportMonitorOnline = require('../../../app/controller/monitor/online');
 import ExportMonitorOperlog = require('../../../app/controller/monitor/operlog');
 import ExportMonitorServer = require('../../../app/controller/monitor/server');
+import ExportOaFlow = require('../../../app/controller/oa/flow');
+import ExportOaNode = require('../../../app/controller/oa/node');
+import ExportOaOrder = require('../../../app/controller/oa/order');
+import ExportOaPurchase = require('../../../app/controller/oa/purchase');
+import ExportOaRecord = require('../../../app/controller/oa/record');
+import ExportOaSupplier = require('../../../app/controller/oa/supplier');
 import ExportSystemConfig = require('../../../app/controller/system/config');
 import ExportSystemDept = require('../../../app/controller/system/dept');
 import ExportSystemDictData = require('../../../app/controller/system/dictData');
@@ -41,6 +47,14 @@ declare module 'egg' {
       online: ExportMonitorOnline;
       operlog: ExportMonitorOperlog;
       server: ExportMonitorServer;
+    }
+    oa: {
+      flow: ExportOaFlow;
+      node: ExportOaNode;
+      order: ExportOaOrder;
+      purchase: ExportOaPurchase;
+      record: ExportOaRecord;
+      supplier: ExportOaSupplier;
     }
     system: {
       config: ExportSystemConfig;

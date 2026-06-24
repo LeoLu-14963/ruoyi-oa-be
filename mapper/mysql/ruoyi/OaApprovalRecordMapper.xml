@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper/mysql/ruoyi/OaApprovalRecordMapper.xml">
+
+    <!-- 通用查询结果列 -->
+    <sql id="selectOaApprovalRecordVo">
+        select record_id, business_id, business_type, node_id, node_name, approver_id, approver_name, approve_time, action, opinion, attachment_url, remark, create_by, create_time, update_by, update_time from oa_approval_record
+    </sql>
+
+    <!-- 查询审批记录列表 -->
+    <select id="selectOaApprovalRecordList" parameterType="OaApprovalRecord" resultType="OaApprovalRecord">
+        <include refid="selectOaApprovalRecordVo"/>
+        <where>
+            <if test="businessId != null "> and business_id = #{businessId}</if>
+            <if test="businessType != null  and businessType != ''"> and business_type = #{businessType}</if>
+            <if test="nodeId != null "> and node_id = #{nodeId}</if>
+            <if test="nodeName != null  and nodeName != ''"> and node_name like concat('%', #{nodeName}, '%')</if>
+            <if test="approverId != null "> and approver_id = #{approverId}</if>
+            <if test="approverName != null  and approverName != ''"> and approver_name like concat('%', #{approverName}, '%')</if>
+            <if test="approveTime != null "> and approve_time = #{approveTime}</if>
+            <if test="action != null  and action != ''"> and action = #{action}</if>
+            <if test="opinion != null  and opinion != ''"> and opinion = #{opinion}</if>
+            <if test="attachmentUrl != null  and attachmentUrl != ''"> and attachment_url = #{attachmentUrl}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 查询审批记录详细 -->
+    <select id="selectOaApprovalRecordByRecordId" parameterType="Number" resultType="OaApprovalRecord">
+        <include refid="selectOaApprovalRecordVo"/>
+        where record_id = #{recordId}
+    </select>
+
+    <!-- 新增审批记录 -->
+    <insert id="insertOaApprovalRecord" parameterType="OaApprovalRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into oa_approval_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="businessId != null">business_id,</if>
+            <if test="businessType != null and businessType != ''">business_type,</if>
+            <if test="nodeId != null">node_id,</if>
+            <if test="nodeName != null">node_name,</if>
+            <if test="approverId != null">approver_id,</if>
+            <if test="approverName != null">approver_name,</if>
+            <if test="approveTime != null">approve_time,</if>
+            <if test="action != null and action != ''">action,</if>
+            <if test="opinion != null">opinion,</if>
+            <if test="attachmentUrl != null">attachment_url,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="businessId != null">#{businessId},</if>
+            <if test="businessType != null and businessType != ''">#{businessType},</if>
+            <if test="nodeId != null">#{nodeId},</if>
+            <if test="nodeName != null">#{nodeName},</if>
+            <if test="approverId != null">#{approverId},</if>
+            <if test="approverName != null">#{approverName},</if>
+            <if test="approveTime != null">#{approveTime},</if>
+            <if test="action != null and action != ''">#{action},</if>
+            <if test="opinion != null">#{opinion},</if>
+            <if test="attachmentUrl != null">#{attachmentUrl},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <!-- 修改审批记录 -->
+    <update id="updateOaApprovalRecord" parameterType="OaApprovalRecord">
+        update oa_approval_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="businessId != null">business_id = #{businessId},</if>
+            <if test="businessType != null and businessType != ''">business_type = #{businessType},</if>
+            <if test="nodeId != null">node_id = #{nodeId},</if>
+            <if test="nodeName != null">node_name = #{nodeName},</if>
+            <if test="approverId != null">approver_id = #{approverId},</if>
+            <if test="approverName != null">approver_name = #{approverName},</if>
+            <if test="approveTime != null">approve_time = #{approveTime},</if>
+            <if test="action != null and action != ''">action = #{action},</if>
+            <if test="opinion != null">opinion = #{opinion},</if>
+            <if test="attachmentUrl != null">attachment_url = #{attachmentUrl},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where record_id = #{recordId}
+    </update>
+
+    <!-- 删除审批记录 -->
+    <delete id="deleteOaApprovalRecordByRecordId" parameterType="Number">
+        delete from oa_approval_record where record_id = #{recordId}
+    </delete>
+
+    <!-- 批量删除审批记录 -->
+    <delete id="deleteOaApprovalRecordByRecordIds" parameterType="String">
+        delete from oa_approval_record where record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+</mapper>

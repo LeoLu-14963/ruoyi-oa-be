@@ -2,7 +2,7 @@
  * @Author: 姜彦汐
  * @Date: 2023-12-22 20:01:21
  * @LastEditors: 姜彦汐
- * @LastEditTime: 2023-12-23 22:00:09
+ * @LastEditTime: 2023-12-24 22:00:09
  * @Description:
  * @Site: https://www.undsky.com
  */
@@ -17,6 +17,13 @@ module.exports = (appInfo) => {
    * @type {Egg.EggAppConfig}
    **/
   const config = (exports = {});
+
+  config.cluster = {
+    listen: {
+      hostname: '0.0.0.0',
+      port: 7001,
+    },
+  };
 
   config.mysql = {
     // 启用驼峰命名转换：数据库字段 user_name -> userName

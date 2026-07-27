@@ -144,16 +144,18 @@ class OaSampleEvaluationService extends Service {
     }
 
     // 2. 查询审批流程（按 flow_type = SAMPLE_EVALUATION 找启用的流程）
-    const flows = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowListMapper([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
     const flowList = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowList([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
-    if (!flowList || flowList.length === 0) {
+    // select() 在单条结果时返回对象，多条返回数组，需要统一处理
+    const flows = Array.isArray(flowList) ? flowList : (flowList ? [flowList] : []);
+    if (flows.length === 0) {
       return { code: 500, msg: '未找到启用的样品评估审批流程' };
     }
-    const flow = flowList[0];
+    const flow = flows[0];
 
     // 3. 查询第一个审批节点（node_type=0 的发起节点之后，node_order 最小的审批节点）
-    const allNodes = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: flow.flowId });
-    if (!allNodes || allNodes.length === 0) {
+    const nodeList = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: flow.flowId });
+    const allNodes = Array.isArray(nodeList) ? nodeList : (nodeList ? [nodeList] : []);
+    if (allNodes.length === 0) {
       return { code: 500, msg: '审批流程未配置节点' };
     }
 
@@ -214,13 +216,15 @@ class OaSampleEvaluationService extends Service {
     }
 
     // 2. 查询当前节点
-    const currentNode = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeByNodeId([], { nodeId: evaluation.currentNodeId });
+    const nodeResult = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeByNodeId([], { nodeId: evaluation.currentNodeId });
+    const currentNode = Array.isArray(nodeResult) ? nodeResult[0] : nodeResult;
     if (!currentNode) {
       return { code: 500, msg: '当前审批节点不存在' };
     }
 
     // 3. 查询所有节点（排序）
-    const allNodes = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: currentNode.flowId });
+    const nodeList = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: currentNode.flowId });
+    const allNodes = Array.isArray(nodeList) ? nodeList : (nodeList ? [nodeList] : []);
     const sortedNodes = allNodes.sort((a, b) => a.nodeOrder - b.nodeOrder);
     const currentIdx = sortedNodes.findIndex(n => n.nodeId === evaluation.currentNodeId);
 
@@ -320,7 +324,8 @@ class OaSampleEvaluationService extends Service {
       businessId: evaluationId,
       businessType: 'SAMPLE_EVALUATION',
     });
-    return { code: 200, msg: '查询成功', data: records || [] };
+    const recordList = Array.isArray(records) ? records : (records ? [records] : []);
+    return { code: 200, msg: '查询成功', data: recordList };
   }
 }
 

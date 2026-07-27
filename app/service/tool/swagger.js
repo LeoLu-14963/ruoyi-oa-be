@@ -459,6 +459,84 @@ class SwaggerService extends Service {
         },
       },
 
+      // ---- 审批流转接口 ----
+
+      '/oa/evaluation/submit/{evaluationId}': {
+        post: {
+          summary: '提交审批（草稿 -> 审批中，自动定位到第一个审批节点）',
+          tags: ['oa/evaluation'],
+          security,
+          parameters: [
+            { name: 'evaluationId', in: 'path', required: true, schema: { type: 'integer' }, description: '评估ID' },
+          ],
+          responses: okResponse('ApiResult'),
+        },
+      },
+
+      '/oa/evaluation/approve': {
+        post: {
+          summary: '审批操作（通过/驳回），可同时回填当前阶段专业字段',
+          tags: ['oa/evaluation'],
+          security,
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['evaluationId', 'action'],
+                  properties: {
+                    evaluationId: { type: 'integer', description: '评估ID' },
+                    action: { type: 'string', enum: ['2', '3'], description: '2=通过, 3=驳回' },
+                    opinion: { type: 'string', description: '审批意见' },
+                    fields: {
+                      type: 'object',
+                      description: '可选，当前阶段专业字段（根据当前节点类型填写对应字段）',
+                      properties: {
+                        inspectionResult: { type: 'string', description: '质检结果（质检节点填写）' },
+                        inspectionTools: { type: 'string', description: '检验工具（质检节点填写）' },
+                        inspectionStandard: { type: 'string', description: '检验标准及结果（质检节点填写）' },
+                        inspectionStatus: { type: 'string', enum: ['0', '1'], description: '质检状态（质检节点填写）' },
+                        engineeringEvaluation: { type: 'string', description: '工程评估意见（工程节点填写）' },
+                        engineeringStatus: { type: 'string', enum: ['0', '1'], description: '工程评估状态（工程节点填写）' },
+                        trialUsage: { type: 'string', description: '试用情况（试用节点填写）' },
+                        trialStatus: { type: 'string', enum: ['0', '1', '2'], description: '试用状态（试用节点填写）' },
+                        finalConclusion: { type: 'string', enum: ['0', '1', '2'], description: '最终结论（主管审批节点填写）' },
+                        conclusionRemark: { type: 'string', description: '结论说明（主管审批节点填写）' },
+                      },
+                    },
+                  },
+                },
+                example: {
+                  evaluationId: 1,
+                  action: '2',
+                  opinion: '质检合格，同意进入工程评估',
+                  fields: {
+                    inspectionResult: '外观无瑕疵，尺寸符合标准',
+                    inspectionTools: '卡尺、万用表',
+                    inspectionStandard: '阻值偏差±1%以内',
+                    inspectionStatus: '1',
+                  },
+                },
+              },
+            },
+          },
+          responses: okResponse('ApiResult'),
+        },
+      },
+
+      '/oa/evaluation/records/{evaluationId}': {
+        get: {
+          summary: '查询评估单的审批记录列表',
+          tags: ['oa/evaluation'],
+          security,
+          parameters: [
+            { name: 'evaluationId', in: 'path', required: true, schema: { type: 'integer' }, description: '评估ID' },
+          ],
+          responses: okResponse('ApprovalRecord'),
+        },
+      },
+
       // ============================================================
       // 供应商管理 /oa/supplier
       // ============================================================

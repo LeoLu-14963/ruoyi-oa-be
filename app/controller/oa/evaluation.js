@@ -170,6 +170,85 @@ module.exports = app => {
         };
       }
     }
+
+    /**
+     * 提交审批
+     * POST /oa/evaluation/submit/:evaluationId
+     * 权限：oa:evaluation:edit
+     */
+    @RequiresPermissions('oa:evaluation:edit')
+    @HttpPost('/submit/:evaluationId')
+    async submit() {
+      const { ctx } = this;
+      const { evaluationId } = ctx.params;
+
+      try {
+        const result = await ctx.service.oa.evaluation.submitEvaluation(Number(evaluationId));
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('提交审批失败:', err);
+        ctx.body = { code: 500, msg: err.message || '提交审批失败' };
+      }
+    }
+
+    /**
+     * 审批操作（通过/驳回）
+     * POST /oa/evaluation/approve
+     * 权限：oa:evaluation:edit
+     *
+     * 请求 body:
+     * {
+     *   "evaluationId": 1,
+     *   "action": "2",          // 2=通过, 3=驳回
+     *   "opinion": "审批意见",
+     *   "fields": {              // 可选，各阶段专业字段
+     *     "inspectionResult": "质检结果",
+     *     "inspectionTools": "卡尺",
+     *     "inspectionStandard": "标准...",
+     *     "inspectionStatus": "1",
+     *     "engineeringEvaluation": "工程意见",
+     *     "engineeringStatus": "1",
+     *     "trialUsage": "试用情况",
+     *     "trialStatus": "2",
+     *     "finalConclusion": "1",
+     *     "conclusionRemark": "结论说明"
+     *   }
+     * }
+     */
+    @RequiresPermissions('oa:evaluation:edit')
+    @HttpPost('/approve')
+    async approve() {
+      const { ctx } = this;
+      const data = ctx.request.body;
+
+      try {
+        const result = await ctx.service.oa.evaluation.approveEvaluation(data);
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('审批操作失败:', err);
+        ctx.body = { code: 500, msg: err.message || '审批操作失败' };
+      }
+    }
+
+    /**
+     * 查询评估单的审批记录
+     * GET /oa/evaluation/records/:evaluationId
+     * 权限：oa:evaluation:query
+     */
+    @RequiresPermissions('oa:evaluation:query')
+    @HttpGet('/records/:evaluationId')
+    async records() {
+      const { ctx } = this;
+      const { evaluationId } = ctx.params;
+
+      try {
+        const result = await ctx.service.oa.evaluation.selectEvaluationApprovalRecords(Number(evaluationId));
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('查询审批记录失败:', err);
+        ctx.body = { code: 500, msg: err.message || '查询审批记录失败' };
+      }
+    }
   }
 
   return OaSampleEvaluationController;

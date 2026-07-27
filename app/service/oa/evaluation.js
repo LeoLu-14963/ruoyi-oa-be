@@ -118,6 +118,210 @@ class OaSampleEvaluationService extends Service {
 
     return { code: 200, msg: '删除成功', data: result };
   }
+
+  // ============================================================
+  // 审批流转
+  // ============================================================
+
+  /**
+   * 提交审批
+   * 将草稿状态的评估单提交到审批流程，状态 0 -> 1(待审批) -> 2(审批中)
+   * @param {Number} evaluationId - 评估ID
+   * @return {object} 结果
+   */
+  async submitEvaluation(evaluationId) {
+    const { ctx } = this;
+    const userName = ctx.state.user.userName;
+    const userId = ctx.state.user.userId;
+
+    // 1. 查询评估单
+    const evaluation = await ctx.helper.getDB(ctx).oaSampleEvaluationMapper.selectOaSampleEvaluationByEvaluationId([], { evaluationId });
+    if (!evaluation) {
+      return { code: 500, msg: '评估单不存在' };
+    }
+    if (evaluation.status !== '0') {
+      return { code: 500, msg: `当前状态不允许提交审批（状态：${evaluation.status}）` };
+    }
+
+    // 2. 查询审批流程（按 flow_type = SAMPLE_EVALUATION 找启用的流程）
+    const flows = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowListMapper([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
+    const flowList = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowList([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
+    if (!flowList || flowList.length === 0) {
+      return { code: 500, msg: '未找到启用的样品评估审批流程' };
+    }
+    const flow = flowList[0];
+
+    // 3. 查询第一个审批节点（node_type=0 的发起节点之后，node_order 最小的审批节点）
+    const allNodes = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: flow.flowId });
+    if (!allNodes || allNodes.length === 0) {
+      return { code: 500, msg: '审批流程未配置节点' };
+    }
+
+    // 按 node_order 排序，找第一个审批节点（跳过发起节点和结束节点）
+    const sortedNodes = allNodes.sort((a, b) => a.nodeOrder - b.nodeOrder);
+    const firstApprovalNode = sortedNodes.find(n => n.nodeType === '1');
+    if (!firstApprovalNode) {
+      return { code: 500, msg: '审批流程未配置审批节点' };
+    }
+
+    // 4. 更新评估单状态
+    await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.updateOaSampleEvaluation([], {
+      evaluationId,
+      status: '2', // 审批中
+      currentNodeId: firstApprovalNode.nodeId,
+      currentApproverId: userId,
+      updateBy: userName,
+    });
+
+    // 5. 写入审批记录（提交动作）
+    await ctx.helper.getMasterDB(ctx).oaApprovalRecordMapper.insertOaApprovalRecord([], {
+      businessId: evaluationId,
+      businessType: 'SAMPLE_EVALUATION',
+      nodeId: sortedNodes[0].nodeId, // 发起节点
+      nodeName: sortedNodes[0].nodeName,
+      approverId: userId,
+      approverName: userName,
+      action: '1', // 提交
+      opinion: '提交审批',
+      createBy: userName,
+    });
+
+    return { code: 200, msg: '提交审批成功' };
+  }
+
+  /**
+   * 审批操作（通过/驳回）
+   * @param {object} data - 审批数据
+   * @param {Number} data.evaluationId - 评估ID
+   * @param {string} data.action - 动作（2通过 3驳回）
+   * @param {string} data.opinion - 审批意见
+   * @param {object} data.fields - 各阶段专业字段（质检/工程/试用/结论）
+   * @return {object} 结果
+   */
+  async approveEvaluation(data) {
+    const { ctx } = this;
+    const userName = ctx.state.user.userName;
+    const userId = ctx.state.user.userId;
+    const { evaluationId, action, opinion, fields } = data;
+
+    // 1. 查询评估单
+    const evaluation = await ctx.helper.getDB(ctx).oaSampleEvaluationMapper.selectOaSampleEvaluationByEvaluationId([], { evaluationId });
+    if (!evaluation) {
+      return { code: 500, msg: '评估单不存在' };
+    }
+    if (evaluation.status !== '2') {
+      return { code: 500, msg: `当前状态不允许审批操作（状态：${evaluation.status}）` };
+    }
+
+    // 2. 查询当前节点
+    const currentNode = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeByNodeId([], { nodeId: evaluation.currentNodeId });
+    if (!currentNode) {
+      return { code: 500, msg: '当前审批节点不存在' };
+    }
+
+    // 3. 查询所有节点（排序）
+    const allNodes = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: currentNode.flowId });
+    const sortedNodes = allNodes.sort((a, b) => a.nodeOrder - b.nodeOrder);
+    const currentIdx = sortedNodes.findIndex(n => n.nodeId === evaluation.currentNodeId);
+
+    // 4. 准备更新字段
+    const updateData = {
+      evaluationId,
+      updateBy: userName,
+    };
+
+    // 5. 根据当前节点回填专业字段
+    if (fields) {
+      if (fields.inspectionResult !== undefined) updateData.inspectionResult = fields.inspectionResult;
+      if (fields.inspectionTools !== undefined) updateData.inspectionTools = fields.inspectionTools;
+      if (fields.inspectionStandard !== undefined) updateData.inspectionStandard = fields.inspectionStandard;
+      if (fields.inspectionStatus !== undefined) updateData.inspectionStatus = fields.inspectionStatus;
+      if (fields.engineeringEvaluation !== undefined) updateData.engineeringEvaluation = fields.engineeringEvaluation;
+      if (fields.engineeringStatus !== undefined) updateData.engineeringStatus = fields.engineeringStatus;
+      if (fields.trialUsage !== undefined) updateData.trialUsage = fields.trialUsage;
+      if (fields.trialStatus !== undefined) updateData.trialStatus = fields.trialStatus;
+      if (fields.finalConclusion !== undefined) updateData.finalConclusion = fields.finalConclusion;
+      if (fields.conclusionRemark !== undefined) updateData.conclusionRemark = fields.conclusionRemark;
+    }
+
+    if (action === '2') {
+      // ===== 通过 =====
+      const nextIdx = currentIdx + 1;
+      if (nextIdx >= sortedNodes.length) {
+        return { code: 500, msg: '已是最后节点，无法继续' };
+      }
+      const nextNode = sortedNodes[nextIdx];
+
+      if (nextNode.nodeType === '4') {
+        // 下一节点是结束节点 -> 审批完成
+        updateData.status = '3'; // 已通过
+        updateData.currentNodeId = null;
+        updateData.currentApproverId = null;
+      } else {
+        // 推进到下一审批节点
+        updateData.status = '2'; // 审批中
+        updateData.currentNodeId = nextNode.nodeId;
+        updateData.currentApproverId = userId;
+      }
+
+      // 更新评估单
+      await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.updateOaSampleEvaluation([], updateData);
+
+      // 写入审批记录
+      await ctx.helper.getMasterDB(ctx).oaApprovalRecordMapper.insertOaApprovalRecord([], {
+        businessId: evaluationId,
+        businessType: 'SAMPLE_EVALUATION',
+        nodeId: evaluation.currentNodeId,
+        nodeName: currentNode.nodeName,
+        approverId: userId,
+        approverName: userName,
+        action: '2', // 通过
+        opinion: opinion || '审批通过',
+        createBy: userName,
+      });
+
+      return { code: 200, msg: nextNode.nodeType === '4' ? '审批完成，评估已通过' : `审批通过，下一节点：${nextNode.nodeName}` };
+
+    } else if (action === '3') {
+      // ===== 驳回 =====
+      updateData.status = '4'; // 已驳回
+      updateData.currentNodeId = null;
+      updateData.currentApproverId = null;
+
+      await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.updateOaSampleEvaluation([], updateData);
+
+      await ctx.helper.getMasterDB(ctx).oaApprovalRecordMapper.insertOaApprovalRecord([], {
+        businessId: evaluationId,
+        businessType: 'SAMPLE_EVALUATION',
+        nodeId: evaluation.currentNodeId,
+        nodeName: currentNode.nodeName,
+        approverId: userId,
+        approverName: userName,
+        action: '3', // 驳回
+        opinion: opinion || '审批驳回',
+        createBy: userName,
+      });
+
+      return { code: 200, msg: '已驳回' };
+
+    } else {
+      return { code: 500, msg: '不支持的操作类型，action 只能是 2(通过) 或 3(驳回)' };
+    }
+  }
+
+  /**
+   * 查询评估单的审批记录
+   * @param {Number} evaluationId - 评估ID
+   * @return {object} 审批记录列表
+   */
+  async selectEvaluationApprovalRecords(evaluationId) {
+    const { ctx } = this;
+    const records = await ctx.helper.getDB(ctx).oaApprovalRecordMapper.selectOaApprovalRecordList([], {
+      businessId: evaluationId,
+      businessType: 'SAMPLE_EVALUATION',
+    });
+    return { code: 200, msg: '查询成功', data: records || [] };
+  }
 }
 
 module.exports = OaSampleEvaluationService;

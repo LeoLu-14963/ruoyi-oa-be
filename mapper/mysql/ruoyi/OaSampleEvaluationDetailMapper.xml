@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper/mysql/ruoyi/OaSampleEvaluationDetailMapper.xml">
+
+    <!-- 通用查询结果列 -->
+    <sql id="selectOaSampleEvaluationDetailVo">
+        select detail_id, evaluation_id, material_name, specification, quantity, unit, inspection_result, inspection_standard, engineering_evaluation, trial_usage, conclusion, remark, create_by, create_time, update_by, update_time from oa_sample_evaluation_detail
+    </sql>
+
+    <!-- 查询评估明细列表 -->
+    <select id="selectOaSampleEvaluationDetailList" parameterType="OaSampleEvaluationDetail" resultType="OaSampleEvaluationDetail">
+        <include refid="selectOaSampleEvaluationDetailVo"/>
+        <where>
+            <if test="evaluationId != null"> and evaluation_id = #{evaluationId}</if>
+            <if test="materialName != null and materialName != ''"> and material_name like concat('%', #{materialName}, '%')</if>
+            <if test="specification != null and specification != ''"> and specification like concat('%', #{specification}, '%')</if>
+            <if test="conclusion != null and conclusion != ''"> and conclusion = #{conclusion}</if>
+        </where>
+        order by create_time asc
+    </select>
+
+    <!-- 查询评估明细详细 -->
+    <select id="selectOaSampleEvaluationDetailByDetailId" parameterType="Number" resultType="OaSampleEvaluationDetail">
+        <include refid="selectOaSampleEvaluationDetailVo"/>
+        where detail_id = #{detailId}
+    </select>
+
+    <!-- 新增评估明细 -->
+    <insert id="insertOaSampleEvaluationDetail" parameterType="OaSampleEvaluationDetail" useGeneratedKeys="true" keyProperty="detailId">
+        insert into oa_sample_evaluation_detail
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="evaluationId != null">evaluation_id,</if>
+            <if test="materialName != null and materialName != ''">material_name,</if>
+            <if test="specification != null">specification,</if>
+            <if test="quantity != null">quantity,</if>
+            <if test="unit != null">unit,</if>
+            <if test="inspectionResult != null">inspection_result,</if>
+            <if test="inspectionStandard != null">inspection_standard,</if>
+            <if test="engineeringEvaluation != null">engineering_evaluation,</if>
+            <if test="trialUsage != null">trial_usage,</if>
+            <if test="conclusion != null and conclusion != ''">conclusion,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="evaluationId != null">#{evaluationId},</if>
+            <if test="materialName != null and materialName != ''">#{materialName},</if>
+            <if test="specification != null">#{specification},</if>
+            <if test="quantity != null">#{quantity},</if>
+            <if test="unit != null">#{unit},</if>
+            <if test="inspectionResult != null">#{inspectionResult},</if>
+            <if test="inspectionStandard != null">#{inspectionStandard},</if>
+            <if test="engineeringEvaluation != null">#{engineeringEvaluation},</if>
+            <if test="trialUsage != null">#{trialUsage},</if>
+            <if test="conclusion != null and conclusion != ''">#{conclusion},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <!-- 修改评估明细 -->
+    <update id="updateOaSampleEvaluationDetail" parameterType="OaSampleEvaluationDetail">
+        update oa_sample_evaluation_detail
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="evaluationId != null">evaluation_id = #{evaluationId},</if>
+            <if test="materialName != null and materialName != ''">material_name = #{materialName},</if>
+            <if test="specification != null">specification = #{specification},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="inspectionResult != null">inspection_result = #{inspectionResult},</if>
+            <if test="inspectionStandard != null">inspection_standard = #{inspectionStandard},</if>
+            <if test="engineeringEvaluation != null">engineering_evaluation = #{engineeringEvaluation},</if>
+            <if test="trialUsage != null">trial_usage = #{trialUsage},</if>
+            <if test="conclusion != null and conclusion != ''">conclusion = #{conclusion},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where detail_id = #{detailId}
+    </update>
+
+    <!-- 删除评估明细 -->
+    <delete id="deleteOaSampleEvaluationDetailByDetailId" parameterType="Number">
+        delete from oa_sample_evaluation_detail where detail_id = #{detailId}
+    </delete>
+
+    <!-- 按评估ID删除明细 -->
+    <delete id="deleteOaSampleEvaluationDetailByEvaluationId" parameterType="Number">
+        delete from oa_sample_evaluation_detail where evaluation_id = #{evaluationId}
+    </delete>
+
+    <!-- 批量删除评估明细 -->
+    <delete id="deleteOaSampleEvaluationDetailByDetailIds" parameterType="String">
+        delete from oa_sample_evaluation_detail where detail_id in
+        <foreach item="detailId" collection="array" open="(" separator="," close=")">
+            #{detailId}
+        </foreach>
+    </delete>
+</mapper>

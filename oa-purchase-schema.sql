@@ -2,7 +2,7 @@
 -- 采购审批管理系统 - 数据库设计
 -- 数据库: ruoyi_oa
 -- 设计日期: 2026-06-20
--- 更新: 2026-07-28 审批节点改为通用节点池模式
+-- 更新: 2026-07-28 审批节点改为通用节点池模式 + 业务类型注册表
 -- =====================================================
 
 -- =====================================================
@@ -148,6 +148,26 @@ CREATE TABLE IF NOT EXISTS `oa_flow_node_rel` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='流程-节点关联表';
 
 -- =====================================================
+-- 5.2 业务类型注册表
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `oa_business_type` (
+  `type_id`     BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '业务类型ID',
+  `type_code`   VARCHAR(50) NOT NULL COMMENT '业务编码',
+  `type_name`   VARCHAR(200) NOT NULL COMMENT '业务名称',
+  `flow_id`     BIGINT(20) DEFAULT NULL COMMENT '绑定的审批流程ID',
+  `form_config` TEXT COMMENT '表单字段配置(JSON)',
+  `description` VARCHAR(500) DEFAULT NULL COMMENT '描述',
+  `status`      CHAR(1) NOT NULL DEFAULT '0' COMMENT '状态(0草稿1启用2停用)',
+  `remark`      VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  `create_by`   VARCHAR(64) DEFAULT NULL COMMENT '创建者',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by`   VARCHAR(64) DEFAULT NULL COMMENT '更新者',
+  `update_time` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`type_id`),
+  UNIQUE KEY `uk_type_code` (`type_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='业务类型注册表';
+
+-- =====================================================
 -- 6. 审批记录表
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `oa_approval_record` (
@@ -243,6 +263,11 @@ INSERT INTO `oa_approval_node` (`node_code`, `node_name`, `node_type`, `approval
 ('NODE_FINANCE', '财务审批', '1', '1', 3, '1', '0'),
 ('NODE_GM', '总经理审批', '1', '1', 4, '1', '0'),
 ('NODE_COMPLETE', '完成', '4', '2', NULL, '0', '0');
+
+-- 插入业务类型
+INSERT INTO `oa_business_type` (`type_code`, `type_name`, `flow_id`, `form_config`, `description`, `status`, `create_by`) VALUES
+('SAMPLE_EVALUATION', '样品评估', 1, '{"fields":[{"key":"evaluationCode","label":"评估编号","type":"text","required":true,"width":"half"},{"key":"title","label":"评估标题","type":"text","required":true,"width":"full"},{"key":"supplierName","label":"供应商名称","type":"text","required":true,"width":"half"},{"key":"materialName","label":"物料名称/型号","type":"text","required":true,"width":"half"}]}', '物料样品评估审批业务', '1', 'admin'),
+('PURCHASE', '采购申请', NULL, '{"fields":[{"key":"purchaseCode","label":"采购单号","type":"text","required":true,"width":"half"},{"key":"title","label":"申请标题","type":"text","required":true,"width":"full"}]}', '采购申请审批业务', '0', 'admin');
 
 -- 将节点组装到采购审批流程（通过关联表建立多对多关系）
 INSERT INTO `oa_flow_node_rel` (`flow_id`, `node_id`, `node_order`) VALUES

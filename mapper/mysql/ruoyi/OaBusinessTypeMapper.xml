@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper/mysql/ruoyi/OaBusinessTypeMapper.xml">
+
+    <!-- 通用查询结果列 -->
+    <sql id="selectOaBusinessTypeVo">
+        select type_id, type_code, type_name, flow_id, form_config, description, status, remark, create_by, create_time, update_by, update_time from oa_business_type
+    </sql>
+
+    <!-- 查询业务类型列表 -->
+    <select id="selectOaBusinessTypeList" parameterType="OaBusinessType" resultType="OaBusinessType">
+        <include refid="selectOaBusinessTypeVo"/>
+        <where>
+            <if test="typeCode != null and typeCode != ''"> and type_code = #{typeCode}</if>
+            <if test="typeName != null and typeName != ''"> and type_name like concat('%', #{typeName}, '%')</if>
+            <if test="flowId != null"> and flow_id = #{flowId}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 按编码查询 -->
+    <select id="selectOaBusinessTypeByTypeCode" parameterType="String" resultType="OaBusinessType">
+        <include refid="selectOaBusinessTypeVo"/>
+        where type_code = #{typeCode}
+    </select>
+
+    <!-- 查询详情 -->
+    <select id="selectOaBusinessTypeByTypeId" parameterType="Number" resultType="OaBusinessType">
+        <include refid="selectOaBusinessTypeVo"/>
+        where type_id = #{typeId}
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insertOaBusinessType" parameterType="OaBusinessType" useGeneratedKeys="true" keyProperty="typeId">
+        insert into oa_business_type
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">type_code,</if>
+            <if test="typeName != null and typeName != ''">type_name,</if>
+            <if test="flowId != null">flow_id,</if>
+            <if test="formConfig != null">form_config,</if>
+            <if test="description != null">description,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
+            <if test="typeName != null and typeName != ''">#{typeName},</if>
+            <if test="flowId != null">#{flowId},</if>
+            <if test="formConfig != null">#{formConfig},</if>
+            <if test="description != null">#{description},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <!-- 修改 -->
+    <update id="updateOaBusinessType" parameterType="OaBusinessType">
+        update oa_business_type
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">type_code = #{typeCode},</if>
+            <if test="typeName != null and typeName != ''">type_name = #{typeName},</if>
+            <if test="flowId != null">flow_id = #{flowId},</if>
+            <if test="formConfig != null">form_config = #{formConfig},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where type_id = #{typeId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteOaBusinessTypeByTypeId" parameterType="Number">
+        delete from oa_business_type where type_id = #{typeId}
+    </delete>
+
+    <!-- 批量删除 -->
+    <delete id="deleteOaBusinessTypeByTypeIds" parameterType="String">
+        delete from oa_business_type where type_id in
+        <foreach item="typeId" collection="array" open="(" separator="," close=")">
+            #{typeId}
+        </foreach>
+    </delete>
+</mapper>

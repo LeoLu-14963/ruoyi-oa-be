@@ -113,6 +113,16 @@ module.exports = app => {
 
       const flowIdArray = flowIds.split(',');
 
+      // 检查是否有业务类型正在使用该流程
+      for (const flowId of flowIdArray) {
+        const businessTypes = await ctx.helper.getDB(ctx).oaBusinessTypeMapper.selectOaBusinessTypeList([], { flowId, status: '1' });
+        const activeTypes = Array.isArray(businessTypes) ? businessTypes : (businessTypes ? [businessTypes] : []);
+        if (activeTypes.length > 0) {
+          const names = activeTypes.map(t => t.typeName).join(', ');
+          return ctx.body = { code: 500, msg: `流程正在被以下业务类型使用，无法删除：${names}` };
+        }
+      }
+
       // 先删除流程下的所有节点关联
       for (const flowId of flowIdArray) {
         await ctx.service.oa.flowNodeRel.deleteOaFlowNodeRelByFlowId(flowId);

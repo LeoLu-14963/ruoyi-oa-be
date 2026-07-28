@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper/mysql/ruoyi/OaApplicationMapper.xml">
+
+    <sql id="selectOaApplicationVo">
+        select application_id, type_code, business_id, title, applicant_id, applicant_name, dept_id, dept_name, status, current_node_id, current_node_name, current_approver_id, current_approver_name, submit_time, finish_time, remark, create_by, create_time, update_by, update_time from oa_application
+    </sql>
+
+    <select id="selectOaApplicationList" parameterType="OaApplication" resultType="OaApplication">
+        <include refid="selectOaApplicationVo"/>
+        <where>
+            <if test="typeCode != null and typeCode != ''"> and type_code = #{typeCode}</if>
+            <if test="title != null and title != ''"> and title like concat('%', #{title}, '%')</if>
+            <if test="applicantId != null"> and applicant_id = #{applicantId}</if>
+            <if test="applicantName != null and applicantName != ''"> and applicant_name like concat('%', #{applicantName}, '%')</if>
+            <if test="deptId != null"> and dept_id = #{deptId}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"> and date_format(create_time,'%Y-%m-%d') &gt;= date_format(#{params.beginTime},'%Y-%m-%d')</if>
+            <if test="params.endTime != null and params.endTime != ''"> and date_format(create_time,'%Y-%m-%d') &lt;= date_format(#{params.endTime},'%Y-%m-%d')</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectOaApplicationByApplicationId" parameterType="Number" resultType="OaApplication">
+        <include refid="selectOaApplicationVo"/>
+        where application_id = #{applicationId}
+    </select>
+
+    <select id="selectOaApplicationByTypeAndBusiness" parameterType="OaApplication" resultType="OaApplication">
+        <include refid="selectOaApplicationVo"/>
+        where type_code = #{typeCode} and business_id = #{businessId}
+    </select>
+
+    <insert id="insertOaApplication" parameterType="OaApplication" useGeneratedKeys="true" keyProperty="applicationId">
+        insert into oa_application
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">type_code,</if>
+            <if test="businessId != null">business_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="applicantId != null">applicant_id,</if>
+            <if test="applicantName != null and applicantName != ''">applicant_name,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="deptName != null and deptName != ''">dept_name,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="currentNodeId != null">current_node_id,</if>
+            <if test="currentNodeName != null and currentNodeName != ''">current_node_name,</if>
+            <if test="currentApproverId != null">current_approver_id,</if>
+            <if test="currentApproverName != null and currentApproverName != ''">current_approver_name,</if>
+            <if test="submitTime != null">submit_time,</if>
+            <if test="finishTime != null">finish_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
+            <if test="businessId != null">#{businessId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="applicantId != null">#{applicantId},</if>
+            <if test="applicantName != null and applicantName != ''">#{applicantName},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="deptName != null and deptName != ''">#{deptName},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="currentNodeId != null">#{currentNodeId},</if>
+            <if test="currentNodeName != null and currentNodeName != ''">#{currentNodeName},</if>
+            <if test="currentApproverId != null">#{currentApproverId},</if>
+            <if test="currentApproverName != null and currentApproverName != ''">#{currentApproverName},</if>
+            <if test="submitTime != null">#{submitTime},</if>
+            <if test="finishTime != null">#{finishTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateOaApplication" parameterType="OaApplication">
+        update oa_application
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="typeCode != null and typeCode != ''">type_code = #{typeCode},</if>
+            <if test="businessId != null">business_id = #{businessId},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="applicantId != null">applicant_id = #{applicantId},</if>
+            <if test="applicantName != null and applicantName != ''">applicant_name = #{applicantName},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="currentNodeId != null">current_node_id = #{currentNodeId},</if>
+            <if test="currentNodeName != null and currentNodeName != ''">current_node_name = #{currentNodeName},</if>
+            <if test="currentApproverId != null">current_approver_id = #{currentApproverId},</if>
+            <if test="currentApproverName != null and currentApproverName != ''">current_approver_name = #{currentApproverName},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where application_id = #{applicationId}
+    </update>
+
+    <update id="updateOaApplicationByTypeAndBusiness" parameterType="OaApplication">
+        update oa_application
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="currentNodeId != null">current_node_id = #{currentNodeId},</if>
+            <if test="currentNodeName != null and currentNodeName != ''">current_node_name = #{currentNodeName},</if>
+            <if test="currentApproverId != null">current_approver_id = #{currentApproverId},</if>
+            <if test="currentApproverName != null and currentApproverName != ''">current_approver_name = #{currentApproverName},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+        </trim>
+        where type_code = #{typeCode} and business_id = #{businessId}
+    </update>
+
+    <delete id="deleteOaApplicationByApplicationId" parameterType="Number">
+        delete from oa_application where application_id = #{applicationId}
+    </delete>
+
+    <delete id="deleteOaApplicationByTypeAndBusiness" parameterType="OaApplication">
+        delete from oa_application where type_code = #{typeCode} and business_id = #{businessId}
+    </delete>
+</mapper>

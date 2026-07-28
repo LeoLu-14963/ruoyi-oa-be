@@ -2,20 +2,16 @@
  * @Description: 物料样品评估服务层
  * @Author: 愚者
  * @Date: 2026-07-27
- * @Update: 2026-07-28 审批逻辑改走通用审批引擎
+ * @Update: 2026-07-28 审批走通用引擎 + 同步统一申请索引表
  */
 
 const Service = require('egg').Service;
 
 class OaSampleEvaluationService extends Service {
 
-  /**
-   * 查询物料样品评估列表（分页）
-   */
   async selectOaSampleEvaluationList(params = {}) {
     const { ctx } = this;
     const mapper = ctx.helper.getDB(ctx).oaSampleEvaluationMapper;
-
     return await ctx.helper.pageQuery(
       mapper.selectOaSampleEvaluationListMapper([], params),
       params,
@@ -23,30 +19,37 @@ class OaSampleEvaluationService extends Service {
     );
   }
 
-  /**
-   * 查询物料样品评估详情（含明细）
-   */
   async selectOaSampleEvaluationByEvaluationId(evaluationId) {
     const { ctx } = this;
-
     const evaluation = await ctx.helper.getDB(ctx).oaSampleEvaluationMapper.selectOaSampleEvaluationByEvaluationId([], { evaluationId });
     const details = await ctx.helper.getDB(ctx).oaSampleEvaluationDetailMapper.selectOaSampleEvaluationDetailList([], { evaluationId });
-
-    return {
-      ...evaluation,
-      details: details || []
-    };
+    return { ...evaluation, details: details || [] };
   }
 
   /**
-   * 新增物料样品评估（含明细）
+   * 新增评估（同时写入统一申请索引表）
    */
   async insertOaSampleEvaluation(data) {
     const { ctx } = this;
     const { details, ...evaluation } = data;
 
+    // 1. 写业务表
     const result = await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.insertOaSampleEvaluation([], evaluation);
 
+    // 2. 写统一申请索引
+    await ctx.service.oa.application.createApplication({
+      typeCode: 'SAMPLE_EVALUATION',
+      businessId: result.insertId,
+      title: evaluation.title,
+      applicantId: ctx.state.user.userId,
+      applicantName: ctx.state.user.userName,
+      deptId: ctx.state.user.deptId,
+      deptName: ctx.state.user.deptName,
+      status: evaluation.status || '0',
+      createBy: evaluation.createBy,
+    });
+
+    // 3. 写明细
     if (details && details.length > 0) {
       for (const detail of details) {
         detail.evaluationId = result.insertId;
@@ -58,9 +61,6 @@ class OaSampleEvaluationService extends Service {
     return { code: 200, msg: '新增成功', data: result };
   }
 
-  /**
-   * 修改物料样品评估（含明细）
-   */
   async updateOaSampleEvaluation(data) {
     const { ctx } = this;
     const { details, ...evaluation } = data;
@@ -87,13 +87,15 @@ class OaSampleEvaluationService extends Service {
   }
 
   /**
-   * 删除物料样品评估（含明细）
+   * 删除评估（同时删除索引）
    */
   async deleteOaSampleEvaluationByEvaluationIds(evaluationIds) {
     const { ctx } = this;
 
     for (const evaluationId of evaluationIds) {
       await ctx.helper.getMasterDB(ctx).oaSampleEvaluationDetailMapper.deleteOaSampleEvaluationDetailByEvaluationId([], { evaluationId });
+      // 删除统一索引
+      await ctx.service.oa.application.deleteApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId);
     }
 
     const result = await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.deleteOaSampleEvaluationByEvaluationIds([], { array: evaluationIds });
@@ -104,23 +106,15 @@ class OaSampleEvaluationService extends Service {
   // 审批流转（走通用审批引擎）
   // ============================================================
 
-  /**
-   * 提交审批
-   */
   async submitEvaluation(evaluationId) {
     const { ctx } = this;
 
-    // 1. 查询评估单
     const evaluation = await ctx.helper.getDB(ctx).oaSampleEvaluationMapper.selectOaSampleEvaluationByEvaluationId([], { evaluationId });
-    if (!evaluation) {
-      return { code: 500, msg: '评估单不存在' };
-    }
-    if (evaluation.status !== '0') {
-      return { code: 500, msg: `当前状态不允许提交审批（状态：${evaluation.status}）` };
-    }
+    if (!evaluation) return { code: 500, msg: '评估单不存在' };
+    if (evaluation.status !== '0') return { code: 500, msg: `当前状态不允许提交审批（状态：${evaluation.status}）` };
 
-    // 2. 调用通用审批引擎
-    return await ctx.service.oa.approvalEngine.submit({
+    // 调通用审批引擎
+    const result = await ctx.service.oa.approvalEngine.submit({
       typeCode: 'SAMPLE_EVALUATION',
       businessId: evaluationId,
       updateData: { evaluationId },
@@ -128,26 +122,39 @@ class OaSampleEvaluationService extends Service {
         await db.oaSampleEvaluationMapper.updateOaSampleEvaluation([], data);
       },
     });
+
+    // 同步统一申请索引
+    if (result.code === 200) {
+      const userName = ctx.state.user.userName;
+      const userId = ctx.state.user.userId;
+      // 查当前节点名
+      const nodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(
+        (await ctx.service.oa.businessType.selectOaBusinessTypeByTypeCode('SAMPLE_EVALUATION')).flowId
+      );
+      const firstApprovalNode = nodes.find(n => n.nodeType === '1');
+      await ctx.service.oa.application.updateApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId, {
+        status: '2',
+        currentNodeId: firstApprovalNode ? firstApprovalNode.nodeId : null,
+        currentNodeName: firstApprovalNode ? firstApprovalNode.nodeName : null,
+        currentApproverId: userId,
+        currentApproverName: userName,
+        submitTime: new Date(),
+        updateBy: userName,
+      });
+    }
+
+    return result;
   }
 
-  /**
-   * 审批操作（通过/驳回）
-   */
   async approveEvaluation(data) {
     const { ctx } = this;
     const { evaluationId, action, opinion, fields } = data;
 
-    // 1. 查询评估单
     const evaluation = await ctx.helper.getDB(ctx).oaSampleEvaluationMapper.selectOaSampleEvaluationByEvaluationId([], { evaluationId });
-    if (!evaluation) {
-      return { code: 500, msg: '评估单不存在' };
-    }
-    if (evaluation.status !== '2') {
-      return { code: 500, msg: `当前状态不允许审批操作（状态：${evaluation.status}）` };
-    }
+    if (!evaluation) return { code: 500, msg: '评估单不存在' };
+    if (evaluation.status !== '2') return { code: 500, msg: `当前状态不允许审批操作（状态：${evaluation.status}）` };
 
-    // 2. 调用通用审批引擎
-    return await ctx.service.oa.approvalEngine.approve({
+    const result = await ctx.service.oa.approvalEngine.approve({
       typeCode: 'SAMPLE_EVALUATION',
       businessId: evaluationId,
       action,
@@ -159,11 +166,50 @@ class OaSampleEvaluationService extends Service {
         await db.oaSampleEvaluationMapper.updateOaSampleEvaluation([], updateData);
       },
     });
+
+    // 同步统一申请索引
+    if (result.code === 200) {
+      const userName = ctx.state.user.userName;
+      const userId = ctx.state.user.userId;
+      const updateData = { updateBy: userName };
+
+      if (action === '2') {
+        // 通过
+        const config = await ctx.service.oa.businessType.selectOaBusinessTypeByTypeCode('SAMPLE_EVALUATION');
+        const nodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(config.flowId);
+        const currentIdx = nodes.findIndex(n => String(n.nodeId) === String(evaluation.currentNodeId));
+        const nextNode = nodes[currentIdx + 1];
+
+        if (nextNode && nextNode.nodeType === '4') {
+          updateData.status = '3'; // 已通过
+          updateData.currentNodeId = null;
+          updateData.currentNodeName = null;
+          updateData.currentApproverId = null;
+          updateData.currentApproverName = null;
+          updateData.finishTime = new Date();
+        } else {
+          updateData.status = '2';
+          updateData.currentNodeId = nextNode ? nextNode.nodeId : null;
+          updateData.currentNodeName = nextNode ? nextNode.nodeName : null;
+          updateData.currentApproverId = userId;
+          updateData.currentApproverName = userName;
+        }
+      } else if (action === '3') {
+        // 驳回
+        updateData.status = '4';
+        updateData.currentNodeId = null;
+        updateData.currentNodeName = null;
+        updateData.currentApproverId = null;
+        updateData.currentApproverName = null;
+        updateData.finishTime = new Date();
+      }
+
+      await ctx.service.oa.application.updateApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId, updateData);
+    }
+
+    return result;
   }
 
-  /**
-   * 查询评估单的审批记录
-   */
   async selectEvaluationApprovalRecords(evaluationId) {
     return await this.ctx.service.oa.approvalEngine.getRecords('SAMPLE_EVALUATION', evaluationId);
   }

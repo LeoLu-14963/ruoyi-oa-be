@@ -2,19 +2,17 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="mapper/mysql/ruoyi/OaApprovalNodeMapper.xml">
 
-    <!-- 通用查询结果列 -->
+    <!-- 通用查询结果列（已移除 flow_id 和 node_order，改为通用节点池） -->
     <sql id="selectOaApprovalNodeVo">
-        select node_id, flow_id, node_code, node_name, node_order, node_type, approval_type, approver_ids, role_id, dept_id, approval_decision, can_reject, can_modify, remark, create_by, create_time, update_by, update_time from oa_approval_node
+        select node_id, node_code, node_name, node_type, approval_type, approver_ids, role_id, dept_id, approval_decision, can_reject, can_modify, remark, create_by, create_time, update_by, update_time from oa_approval_node
     </sql>
 
-    <!-- 查询审批节点配置列表 -->
+    <!-- 查询审批节点列表（通用节点池，不再按流程过滤） -->
     <select id="selectOaApprovalNodeList" parameterType="OaApprovalNode" resultType="OaApprovalNode">
         <include refid="selectOaApprovalNodeVo"/>
         <where>
-            <if test="flowId != null "> and flow_id = #{flowId}</if>
             <if test="nodeCode != null  and nodeCode != ''"> and node_code = #{nodeCode}</if>
             <if test="nodeName != null  and nodeName != ''"> and node_name like concat('%', #{nodeName}, '%')</if>
-            <if test="nodeOrder != null "> and node_order = #{nodeOrder}</if>
             <if test="nodeType != null  and nodeType != ''"> and node_type = #{nodeType}</if>
             <if test="approvalType != null  and approvalType != ''"> and approval_type = #{approvalType}</if>
             <if test="approverIds != null  and approverIds != ''"> and approver_ids = #{approverIds}</if>
@@ -27,20 +25,18 @@
         order by create_time desc
     </select>
 
-    <!-- 查询审批节点配置详细 -->
+    <!-- 查询审批节点详细 -->
     <select id="selectOaApprovalNodeByNodeId" parameterType="Number" resultType="OaApprovalNode">
         <include refid="selectOaApprovalNodeVo"/>
         where node_id = #{nodeId}
     </select>
 
-    <!-- 新增审批节点配置 -->
+    <!-- 新增审批节点 -->
     <insert id="insertOaApprovalNode" parameterType="OaApprovalNode" useGeneratedKeys="true" keyProperty="nodeId">
         insert into oa_approval_node
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="flowId != null">flow_id,</if>
             <if test="nodeCode != null and nodeCode != ''">node_code,</if>
             <if test="nodeName != null and nodeName != ''">node_name,</if>
-            <if test="nodeOrder != null">node_order,</if>
             <if test="nodeType != null and nodeType != ''">node_type,</if>
             <if test="approvalType != null and approvalType != ''">approval_type,</if>
             <if test="approverIds != null">approver_ids,</if>
@@ -56,10 +52,8 @@
             <if test="updateTime != null">update_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="flowId != null">#{flowId},</if>
             <if test="nodeCode != null and nodeCode != ''">#{nodeCode},</if>
             <if test="nodeName != null and nodeName != ''">#{nodeName},</if>
-            <if test="nodeOrder != null">#{nodeOrder},</if>
             <if test="nodeType != null and nodeType != ''">#{nodeType},</if>
             <if test="approvalType != null and approvalType != ''">#{approvalType},</if>
             <if test="approverIds != null">#{approverIds},</if>
@@ -76,14 +70,12 @@
          </trim>
     </insert>
 
-    <!-- 修改审批节点配置 -->
+    <!-- 修改审批节点 -->
     <update id="updateOaApprovalNode" parameterType="OaApprovalNode">
         update oa_approval_node
         <trim prefix="SET" suffixOverrides=",">
-            <if test="flowId != null">flow_id = #{flowId},</if>
             <if test="nodeCode != null and nodeCode != ''">node_code = #{nodeCode},</if>
             <if test="nodeName != null and nodeName != ''">node_name = #{nodeName},</if>
-            <if test="nodeOrder != null">node_order = #{nodeOrder},</if>
             <if test="nodeType != null and nodeType != ''">node_type = #{nodeType},</if>
             <if test="approvalType != null and approvalType != ''">approval_type = #{approvalType},</if>
             <if test="approverIds != null">approver_ids = #{approverIds},</if>
@@ -101,12 +93,12 @@
         where node_id = #{nodeId}
     </update>
 
-    <!-- 删除审批节点配置 -->
+    <!-- 删除审批节点 -->
     <delete id="deleteOaApprovalNodeByNodeId" parameterType="Number">
         delete from oa_approval_node where node_id = #{nodeId}
     </delete>
 
-    <!-- 批量删除审批节点配置 -->
+    <!-- 批量删除审批节点 -->
     <delete id="deleteOaApprovalNodeByNodeIds" parameterType="String">
         delete from oa_approval_node where node_id in
         <foreach item="nodeId" collection="array" open="(" separator="," close=")">

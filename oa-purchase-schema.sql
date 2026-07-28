@@ -2,6 +2,7 @@
 -- 采购审批管理系统 - 数据库设计
 -- 数据库: ruoyi_oa
 -- 设计日期: 2026-06-20
+-- 更新: 2026-07-28 审批节点改为通用节点池模式
 -- =====================================================
 
 -- =====================================================
@@ -107,14 +108,12 @@ CREATE TABLE IF NOT EXISTS `oa_approval_flow` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='审批流程配置表';
 
 -- =====================================================
--- 5. 审批节点配置表
+-- 5. 审批节点配置表（通用节点池，不再隶属流程）
 -- =====================================================
 CREATE TABLE IF NOT EXISTS `oa_approval_node` (
   `node_id` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '节点ID',
-  `flow_id` BIGINT(20) NOT NULL COMMENT '流程ID',
   `node_code` VARCHAR(50) NOT NULL COMMENT '节点编码',
   `node_name` VARCHAR(200) NOT NULL COMMENT '节点名称',
-  `node_order` INT(11) NOT NULL COMMENT '节点顺序',
   `node_type` VARCHAR(50) NOT NULL COMMENT '节点类型(0发起1审批2会签3或签4结束)',
   `approval_type` VARCHAR(50) NOT NULL COMMENT '审批类型(1角色2人员3部门)',
   `approver_ids` VARCHAR(500) DEFAULT NULL COMMENT '审批人ID列表，逗号分隔',
@@ -129,9 +128,24 @@ CREATE TABLE IF NOT EXISTS `oa_approval_node` (
   `update_by` VARCHAR(64) DEFAULT NULL COMMENT '更新者',
   `update_time` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`node_id`),
+  UNIQUE KEY `uk_node_code` (`node_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='审批节点配置表（通用节点池）';
+
+-- =====================================================
+-- 5.1 流程-节点关联表（多对多）
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `oa_flow_node_rel` (
+  `rel_id`      BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '关联ID',
+  `flow_id`     BIGINT(20) NOT NULL COMMENT '流程ID',
+  `node_id`     BIGINT(20) NOT NULL COMMENT '节点ID',
+  `node_order`  INT(11) NOT NULL COMMENT '在该流程中的顺序',
+  `create_by`   VARCHAR(64) DEFAULT NULL COMMENT '创建者',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`rel_id`),
+  UNIQUE KEY `uk_flow_node` (`flow_id`, `node_id`),
   KEY `idx_flow_id` (`flow_id`),
-  KEY `idx_node_order` (`node_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='审批节点配置表';
+  KEY `idx_node_id` (`node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='流程-节点关联表';
 
 -- =====================================================
 -- 6. 审批记录表
@@ -222,13 +236,21 @@ INSERT INTO `oa_supplier` (`supplier_code`, `supplier_name`, `supplier_type`, `c
 INSERT INTO `oa_approval_flow` (`flow_code`, `flow_name`, `flow_type`, `status`) VALUES
 ('FLOW_PURCHASE', '采购审批流程', 'PURCHASE', '1');
 
--- 插入审批节点配置
-INSERT INTO `oa_approval_node` (`flow_id`, `node_code`, `node_name`, `node_order`, `node_type`, `approval_type`, `role_id`, `can_reject`, `can_modify`) VALUES
-(1, 'NODE_APPLY', '提交申请', 1, '0', '2', NULL, '0', '1'),
-(1, 'NODE_DEPT_LEADER', '部门经理审批', 2, '1', '1', 2, '1', '0'),
-(1, 'NODE_FINANCE', '财务审批', 3, '1', '1', 3, '1', '0'),
-(1, 'NODE_GM', '总经理审批', 4, '1', '1', 4, '1', '0'),
-(1, 'NODE_COMPLETE', '完成', 5, '4', '2', NULL, '0', '0');
+-- 插入通用审批节点（节点池，不隶属任何流程）
+INSERT INTO `oa_approval_node` (`node_code`, `node_name`, `node_type`, `approval_type`, `role_id`, `can_reject`, `can_modify`) VALUES
+('NODE_APPLY', '提交申请', '0', '2', NULL, '0', '1'),
+('NODE_DEPT_LEADER', '部门经理审批', '1', '1', 2, '1', '0'),
+('NODE_FINANCE', '财务审批', '1', '1', 3, '1', '0'),
+('NODE_GM', '总经理审批', '1', '1', 4, '1', '0'),
+('NODE_COMPLETE', '完成', '4', '2', NULL, '0', '0');
+
+-- 将节点组装到采购审批流程（通过关联表建立多对多关系）
+INSERT INTO `oa_flow_node_rel` (`flow_id`, `node_id`, `node_order`) VALUES
+(1, 1, 1),  -- 提交申请
+(1, 2, 2),  -- 部门经理审批
+(1, 3, 3),  -- 财务审批
+(1, 4, 4),  -- 总经理审批
+(1, 5, 5);  -- 完成
 
 -- =====================================================
 -- 完成！

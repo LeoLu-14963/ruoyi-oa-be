@@ -1,7 +1,8 @@
 /*
- * @Description: 审批节点配置控制器
+ * @Description: 审批节点配置控制器（通用节点池模式）
  * @Author: 姜彦汐
  * @Date: 2026-06-22
+ * @Update: 2026-07-28 改为通用节点池，移除 flow_id 和 node_order
  */
 
 const Controller = require('egg').Controller;
@@ -16,7 +17,7 @@ module.exports = app => {
   class OaApprovalNodeController extends Controller {
 
     /**
-     * 查询审批节点配置列表
+     * 查询审批节点列表
      * GET /oa/node/list
      * 权限：oa:node:list
      */
@@ -37,16 +38,16 @@ module.exports = app => {
           ...result,
         };
       } catch (err) {
-        ctx.logger.error('查询审批节点配置列表失败:', err);
+        ctx.logger.error('查询审批节点列表失败:', err);
         ctx.body = {
           code: 500,
-          msg: err.message || '查询审批节点配置列表失败'
+          msg: err.message || '查询审批节点列表失败'
         };
       }
     }
 
     /**
-     * 查询审批节点配置详情
+     * 查询审批节点详情
      * GET /oa/node/:nodeId
      * 权限：oa:node:query
      */
@@ -62,7 +63,7 @@ module.exports = app => {
     }
 
     /**
-     * 新增审批节点配置
+     * 新增审批节点
      * POST /oa/node
      * 权限：oa:node:add
      */
@@ -81,7 +82,7 @@ module.exports = app => {
     }
 
     /**
-     * 修改审批节点配置
+     * 修改审批节点
      * PUT /oa/node
      * 权限：oa:node:edit
      */
@@ -100,7 +101,7 @@ module.exports = app => {
     }
 
     /**
-     * 删除审批节点配置
+     * 删除审批节点
      * DELETE /oa/node/:nodeIds
      * 权限：oa:node:remove
      */
@@ -117,7 +118,7 @@ module.exports = app => {
     }
 
     /**
-     * 导出审批节点配置
+     * 导出审批节点
      * POST /oa/node/export
      * 权限：oa:node:export
      */
@@ -130,16 +131,14 @@ module.exports = app => {
       try {
         const params = ctx.request.body;
 
-        // 查询审批节点配置列表
+        // 查询审批节点列表
         const result = await service.oa.node.selectOaApprovalNodeList(params);
         const list = result.rows || [];
 
         // 定义 Excel 列配置
         const columns = [
-          { header: '流程ID', key: 'flowId', width: 20 },
           { header: '节点编码', key: 'nodeCode', width: 20 },
           { header: '节点名称', key: 'nodeName', width: 20 },
-          { header: '节点顺序', key: 'nodeOrder', width: 20 },
           { header: '节点类型(0发起1审批2会签3或签4结束)', key: 'nodeType', width: 20 },
           { header: '审批类型(1角色2人员3部门)', key: 'approvalType', width: 20 },
           { header: '审批人ID列表，逗号分隔', key: 'approverIds', width: 20 },

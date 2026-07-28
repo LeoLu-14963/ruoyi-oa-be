@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper/mysql/ruoyi/OaFlowNodeRelMapper.xml">
+
+    <!-- 通用查询结果列 -->
+    <sql id="selectOaFlowNodeRelVo">
+        select rel_id, flow_id, node_id, node_order, create_by, create_time from oa_flow_node_rel
+    </sql>
+
+    <!-- 查询流程-节点关联列表（支持按 flowId 过滤） -->
+    <select id="selectOaFlowNodeRelList" parameterType="OaFlowNodeRel" resultType="OaFlowNodeRel">
+        <include refid="selectOaFlowNodeRelVo"/>
+        <where>
+            <if test="flowId != null "> and flow_id = #{flowId}</if>
+            <if test="nodeId != null "> and node_id = #{nodeId}</if>
+        </where>
+        order by node_order asc
+    </select>
+
+    <!-- 按流程ID查询关联的节点详情（联表查询，返回节点完整信息 + 在该流程中的顺序） -->
+    <select id="selectNodesByFlowId" parameterType="Number" resultType="java.util.Map">
+        select
+            n.node_id        as nodeId,
+            n.node_code      as nodeCode,
+            n.node_name      as nodeName,
+            n.node_type      as nodeType,
+            n.approval_type  as approvalType,
+            n.approver_ids   as approverIds,
+            n.role_id        as roleId,
+            n.dept_id        as deptId,
+            n.approval_decision as approvalDecision,
+            n.can_reject     as canReject,
+            n.can_modify     as canModify,
+            n.remark         as remark,
+            r.rel_id         as relId,
+            r.node_order     as nodeOrder
+        from oa_flow_node_rel r
+        inner join oa_approval_node n on r.node_id = n.node_id
+        where r.flow_id = #{flowId}
+        order by r.node_order asc
+    </select>
+
+    <!-- 查询关联详情 -->
+    <select id="selectOaFlowNodeRelByRelId" parameterType="Number" resultType="OaFlowNodeRel">
+        <include refid="selectOaFlowNodeRelVo"/>
+        where rel_id = #{relId}
+    </select>
+
+    <!-- 新增关联 -->
+    <insert id="insertOaFlowNodeRel" parameterType="OaFlowNodeRel" useGeneratedKeys="true" keyProperty="relId">
+        insert into oa_flow_node_rel
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="flowId != null">flow_id,</if>
+            <if test="nodeId != null">node_id,</if>
+            <if test="nodeOrder != null">node_order,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="flowId != null">#{flowId},</if>
+            <if test="nodeId != null">#{nodeId},</if>
+            <if test="nodeOrder != null">#{nodeOrder},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <!-- 批量新增关联 -->
+    <insert id="batchInsertOaFlowNodeRel" parameterType="java.util.List">
+        insert into oa_flow_node_rel (flow_id, node_id, node_order, create_by)
+        values
+        <foreach collection="array" item="item" separator=",">
+            (#{item.flowId}, #{item.nodeId}, #{item.nodeOrder}, #{item.createBy})
+        </foreach>
+    </insert>
+
+    <!-- 修改关联 -->
+    <update id="updateOaFlowNodeRel" parameterType="OaFlowNodeRel">
+        update oa_flow_node_rel
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="flowId != null">flow_id = #{flowId},</if>
+            <if test="nodeId != null">node_id = #{nodeId},</if>
+            <if test="nodeOrder != null">node_order = #{nodeOrder},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where rel_id = #{relId}
+    </update>
+
+    <!-- 按流程ID删除所有关联（重新配置时先清空） -->
+    <delete id="deleteOaFlowNodeRelByFlowId" parameterType="Number">
+        delete from oa_flow_node_rel where flow_id = #{flowId}
+    </delete>
+
+    <!-- 删除关联 -->
+    <delete id="deleteOaFlowNodeRelByRelId" parameterType="Number">
+        delete from oa_flow_node_rel where rel_id = #{relId}
+    </delete>
+
+    <!-- 批量删除关联 -->
+    <delete id="deleteOaFlowNodeRelByRelIds" parameterType="String">
+        delete from oa_flow_node_rel where rel_id in
+        <foreach item="relId" collection="array" open="(" separator="," close=")">
+            #{relId}
+        </foreach>
+    </delete>
+</mapper>

@@ -2,6 +2,7 @@
  * @Description: 审批流程配置控制器
  * @Author: 姜彦汐
  * @Date: 2026-06-22
+ * @Update: 2026-07-28 增加流程节点组装/查询接口（节点池模式）
  */
 
 const Controller = require('egg').Controller;
@@ -111,6 +112,12 @@ module.exports = app => {
       const { flowIds } = ctx.params;
 
       const flowIdArray = flowIds.split(',');
+
+      // 先删除流程下的所有节点关联
+      for (const flowId of flowIdArray) {
+        await ctx.service.oa.flowNodeRel.deleteOaFlowNodeRelByFlowId(flowId);
+      }
+
       const result = await ctx.service.oa.flow.deleteOaApprovalFlowByFlowIds(flowIdArray);
 
       ctx.body = result;
@@ -153,6 +160,50 @@ module.exports = app => {
           msg: err.message || '导出审批流程配置失败'
         };
       }
+    }
+
+    // ========================================
+    // 流程节点组装接口（节点池模式）
+    // ========================================
+
+    /**
+     * 查询流程下配置的节点列表
+     * GET /oa/flow/:flowId/nodes
+     * 权限：oa:flow:query
+     */
+    @RequiresPermissions('oa:flow:query')
+    @HttpGet('/:flowId/nodes')
+    async getNodes() {
+      const { ctx } = this;
+      const { flowId } = ctx.params;
+
+      const nodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(flowId);
+
+      ctx.body = { code: 200, msg: '操作成功', data: nodes };
+    }
+
+    /**
+     * 配置流程节点（从节点池中选择节点并设置顺序）
+     * POST /oa/flow/:flowId/nodes
+     * Body: { nodes: [{ nodeId, nodeOrder }, ...] }
+     * 权限：oa:flow:edit
+     */
+    @RequiresPermissions('oa:flow:edit')
+    @HttpPost('/:flowId/nodes')
+    async configNodes() {
+      const { ctx } = this;
+      const { flowId } = ctx.params;
+      const { nodes } = ctx.request.body;
+
+      if (!Array.isArray(nodes)) {
+        ctx.body = { code: 400, msg: '参数错误：nodes 必须是数组' };
+        return;
+      }
+
+      const createBy = ctx.state.user.userName;
+      const result = await ctx.service.oa.flowNodeRel.configFlowNodes(flowId, nodes, createBy);
+
+      ctx.body = result;
     }
   }
 

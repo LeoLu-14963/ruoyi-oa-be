@@ -2,6 +2,7 @@
  * @Description: 物料样品评估服务层
  * @Author: 愚者
  * @Date: 2026-07-27
+ * @Update: 2026-07-28 适配节点池模式，审批节点查询改走关联表
  */
 
 const Service = require('egg').Service;
@@ -145,23 +146,21 @@ class OaSampleEvaluationService extends Service {
 
     // 2. 查询审批流程（按 flow_type = SAMPLE_EVALUATION 找启用的流程）
     const flowList = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowList([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
-    // select() 在单条结果时返回对象，多条返回数组，需要统一处理
     const flows = Array.isArray(flowList) ? flowList : (flowList ? [flowList] : []);
     if (flows.length === 0) {
       return { code: 500, msg: '未找到启用的样品评估审批流程' };
     }
     const flow = flows[0];
 
-    // 3. 查询第一个审批节点（node_type=0 的发起节点之后，node_order 最小的审批节点）
-    const nodeList = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: flow.flowId });
-    const allNodes = Array.isArray(nodeList) ? nodeList : (nodeList ? [nodeList] : []);
-    if (allNodes.length === 0) {
+    // 3. 通过关联表查询流程下的节点（按 node_order 排序）
+    const allNodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(flow.flowId);
+    if (!allNodes || allNodes.length === 0) {
       return { code: 500, msg: '审批流程未配置节点' };
     }
 
-    // 按 node_order 排序，找第一个审批节点（跳过发起节点和结束节点）
-    const sortedNodes = allNodes.sort((a, b) => a.nodeOrder - b.nodeOrder);
-    const firstApprovalNode = sortedNodes.find(n => n.nodeType === '1');
+    // allNodes 已按 node_order 升序排列
+    // 找第一个审批节点（跳过发起节点 node_type=0 和结束节点 node_type=4）
+    const firstApprovalNode = allNodes.find(n => n.nodeType === '1');
     if (!firstApprovalNode) {
       return { code: 500, msg: '审批流程未配置审批节点' };
     }
@@ -179,8 +178,8 @@ class OaSampleEvaluationService extends Service {
     await ctx.helper.getMasterDB(ctx).oaApprovalRecordMapper.insertOaApprovalRecord([], {
       businessId: evaluationId,
       businessType: 'SAMPLE_EVALUATION',
-      nodeId: sortedNodes[0].nodeId, // 发起节点
-      nodeName: sortedNodes[0].nodeName,
+      nodeId: allNodes[0].nodeId, // 发起节点
+      nodeName: allNodes[0].nodeName,
       approverId: userId,
       approverName: userName,
       action: '1', // 提交
@@ -215,26 +214,34 @@ class OaSampleEvaluationService extends Service {
       return { code: 500, msg: `当前状态不允许审批操作（状态：${evaluation.status}）` };
     }
 
-    // 2. 查询当前节点
-    const nodeResult = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeByNodeId([], { nodeId: evaluation.currentNodeId });
-    const currentNode = Array.isArray(nodeResult) ? nodeResult[0] : nodeResult;
+    // 2. 通过关联表反查当前节点所属的流程
+    //    先查当前节点信息
+    const currentNodeResult = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeByNodeId([], { nodeId: evaluation.currentNodeId });
+    const currentNode = Array.isArray(currentNodeResult) ? currentNodeResult[0] : currentNodeResult;
     if (!currentNode) {
       return { code: 500, msg: '当前审批节点不存在' };
     }
 
-    // 3. 查询所有节点（排序）
-    const nodeList = await ctx.helper.getDB(ctx).oaApprovalNodeMapper.selectOaApprovalNodeList([], { flowId: currentNode.flowId });
-    const allNodes = Array.isArray(nodeList) ? nodeList : (nodeList ? [nodeList] : []);
-    const sortedNodes = allNodes.sort((a, b) => a.nodeOrder - b.nodeOrder);
+    // 3. 查询评估单对应的审批流程（通过 flow_type 查找）
+    const flowList = await ctx.helper.getDB(ctx).oaApprovalFlowMapper.selectOaApprovalFlowList([], { flowType: 'SAMPLE_EVALUATION', status: '1' });
+    const flows = Array.isArray(flowList) ? flowList : (flowList ? [flowList] : []);
+    if (flows.length === 0) {
+      return { code: 500, msg: '审批流程不存在或已停用' };
+    }
+    const flowId = flows[0].flowId;
+
+    // 4. 通过关联表查询流程下所有节点（已按 node_order 排序）
+    const allNodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(flowId);
+    const sortedNodes = allNodes || [];
     const currentIdx = sortedNodes.findIndex(n => n.nodeId === evaluation.currentNodeId);
 
-    // 4. 准备更新字段
+    // 5. 准备更新字段
     const updateData = {
       evaluationId,
       updateBy: userName,
     };
 
-    // 5. 根据当前节点回填专业字段
+    // 6. 根据当前节点回填专业字段
     if (fields) {
       if (fields.inspectionResult !== undefined) updateData.inspectionResult = fields.inspectionResult;
       if (fields.inspectionTools !== undefined) updateData.inspectionTools = fields.inspectionTools;

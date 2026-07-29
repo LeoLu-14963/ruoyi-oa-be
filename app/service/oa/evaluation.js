@@ -39,7 +39,7 @@ class OaSampleEvaluationService extends Service {
     // 2. 写统一申请索引
     await ctx.service.oa.application.createApplication({
       typeCode: 'SAMPLE_EVALUATION',
-      businessId: result.insertId,
+      businessId: result,
       title: evaluation.title,
       applicantId: ctx.state.user.userId,
       applicantName: ctx.state.user.userName,
@@ -52,7 +52,7 @@ class OaSampleEvaluationService extends Service {
     // 3. 写明细
     if (details && details.length > 0) {
       for (const detail of details) {
-        detail.evaluationId = result.insertId;
+        detail.evaluationId = result;
         detail.createBy = evaluation.createBy;
         await ctx.helper.getMasterDB(ctx).oaSampleEvaluationDetailMapper.insertOaSampleEvaluationDetail([], detail);
       }
@@ -126,19 +126,20 @@ class OaSampleEvaluationService extends Service {
     // 同步统一申请索引
     if (result.code === 200) {
       const userName = ctx.state.user.userName;
-      const userId = ctx.state.user.userId;
-      // 查当前节点名
+      // 查当前节点信息（含审批人配置）
       const nodes = await ctx.service.oa.flowNodeRel.selectNodesByFlowId(
         (await ctx.service.oa.businessType.selectOaBusinessTypeByTypeCode('SAMPLE_EVALUATION')).flowId
       );
       const firstApprovalNode = nodes.find(n => n.nodeType === '1');
+      // 从节点配置获取审批人
+      const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(firstApprovalNode);
       await ctx.service.oa.application.updateApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId, {
         status: '2',
         currentNodeId: firstApprovalNode ? firstApprovalNode.nodeId : null,
         currentNodeName: firstApprovalNode ? firstApprovalNode.nodeName : null,
-        currentApproverId: userId,
-        currentApproverName: userName,
-        submitTime: new Date(),
+        currentApproverId: nextApprover.approverId,
+        currentApproverName: nextApprover.approverName,
+        submitTime: ctx.helper.formatDate(new Date()),
         updateBy: userName,
       });
     }
@@ -170,7 +171,6 @@ class OaSampleEvaluationService extends Service {
     // 同步统一申请索引
     if (result.code === 200) {
       const userName = ctx.state.user.userName;
-      const userId = ctx.state.user.userId;
       const updateData = { updateBy: userName };
 
       if (action === '2') {
@@ -186,13 +186,15 @@ class OaSampleEvaluationService extends Service {
           updateData.currentNodeName = null;
           updateData.currentApproverId = null;
           updateData.currentApproverName = null;
-          updateData.finishTime = new Date();
+          updateData.finishTime = ctx.helper.formatDate(new Date());
         } else {
+          // 从下一节点配置获取审批人
+          const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(nextNode);
           updateData.status = '2';
           updateData.currentNodeId = nextNode ? nextNode.nodeId : null;
           updateData.currentNodeName = nextNode ? nextNode.nodeName : null;
-          updateData.currentApproverId = userId;
-          updateData.currentApproverName = userName;
+          updateData.currentApproverId = nextApprover.approverId;
+          updateData.currentApproverName = nextApprover.approverName;
         }
       } else if (action === '3') {
         // 驳回
@@ -201,7 +203,7 @@ class OaSampleEvaluationService extends Service {
         updateData.currentNodeName = null;
         updateData.currentApproverId = null;
         updateData.currentApproverName = null;
-        updateData.finishTime = new Date();
+        updateData.finishTime = ctx.helper.formatDate(new Date());
       }
 
       await ctx.service.oa.application.updateApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId, updateData);

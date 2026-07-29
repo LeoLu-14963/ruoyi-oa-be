@@ -45,12 +45,9 @@ function RequiresPermissions(permissions, logical = 'AND') {
         // 执行原方法
         return await originalMethod.apply(this, args);
       } catch (err) {
-        ctx.logger.error('权限验证失败:', err);
-        ctx.status = 500;
-        ctx.body = {
-          code: 500,
-          msg: '权限验证失败'
-        };
+        // 权限验证装饰器异常不应吞掉业务错误，直接抛出让上层处理
+        ctx.logger.error('权限验证装饰器异常:', err);
+        throw err;
       }
     };
     
@@ -89,12 +86,9 @@ function RequiresRoles(roles, logical = 'AND') {
         // 执行原方法
         return await originalMethod.apply(this, args);
       } catch (err) {
-        ctx.logger.error('角色验证失败:', err);
-        ctx.status = 500;
-        ctx.body = {
-          code: 500,
-          msg: '角色验证失败'
-        };
+        // 权限验证装饰器异常不应吞掉业务错误，直接抛出让上层处理
+        ctx.logger.error('权限验证装饰器异常:', err);
+        throw err;
       }
     };
     
@@ -152,12 +146,9 @@ function RequiresAuth(options = {}) {
         // 执行原方法
         return await originalMethod.apply(this, args);
       } catch (err) {
-        ctx.logger.error('权限验证失败:', err);
-        ctx.status = 500;
-        ctx.body = {
-          code: 500,
-          msg: '权限验证失败'
-        };
+        // 权限验证装饰器异常不应吞掉业务错误，直接抛出让上层处理
+        ctx.logger.error('权限验证装饰器异常:', err);
+        throw err;
       }
     };
     

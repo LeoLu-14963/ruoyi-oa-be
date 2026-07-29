@@ -47,6 +47,62 @@ class ApprovalEngineService extends Service {
   }
 
   /**
+   * 根据节点配置获取下一审批人
+   * 支持三种审批类型：1=按角色 2=按人员 3=按部门
+   * @param {object} node - 节点信息（含 approvalType, approverIds, roleId, deptId）
+   * @return {object} { approverId, approverName } 审批人信息
+   */
+  async getNextApprover(node) {
+    const { ctx } = this;
+    const db = this.app.mysql.get('ruoyi');
+    let approverId = null;
+    let approverName = null;
+
+    const approvalType = String(node.approvalType);
+
+    if (approvalType === '1' && node.roleId) {
+      // 按角色：查该角色下状态正常的第一个用户
+      const users = await db.selects(
+        `SELECT u.user_id, u.user_name, u.nick_name FROM sys_user u
+         INNER JOIN sys_user_role ur ON u.user_id = ur.user_id
+         WHERE ur.role_id = ${node.roleId} AND u.status = '0' AND u.del_flag = '0'
+         ORDER BY u.user_id ASC LIMIT 1`
+      );
+      if (users && users.length > 0) {
+        approverId = users[0].user_id;
+        approverName = users[0].nick_name || users[0].user_name;
+      }
+    } else if (approvalType === '2' && node.approverIds) {
+      // 按人员：取 approver_ids 中第一个用户
+      const idList = String(node.approverIds).split(',').map(s => s.trim()).filter(Boolean);
+      if (idList.length > 0) {
+        const users = await db.selects(
+          `SELECT user_id, user_name, nick_name FROM sys_user
+           WHERE user_id IN (${idList.join(',')}) AND status = '0' AND del_flag = '0'
+           ORDER BY user_id ASC LIMIT 1`
+        );
+        if (users && users.length > 0) {
+          approverId = users[0].user_id;
+          approverName = users[0].nick_name || users[0].user_name;
+        }
+      }
+    } else if (approvalType === '3' && node.deptId) {
+      // 按部门：查该部门下状态正常的第一个用户
+      const users = await db.selects(
+        `SELECT user_id, user_name, nick_name FROM sys_user
+         WHERE dept_id = ${node.deptId} AND status = '0' AND del_flag = '0'
+         ORDER BY user_id ASC LIMIT 1`
+      );
+      if (users && users.length > 0) {
+        approverId = users[0].user_id;
+        approverName = users[0].nick_name || users[0].user_name;
+      }
+    }
+
+    return { approverId, approverName };
+  }
+
+  /**
    * 提交审批
    * @param {object} options
    * @param {string} options.typeCode - 业务编码
@@ -76,12 +132,16 @@ class ApprovalEngineService extends Service {
       return { code: 500, msg: '审批流程未配置审批节点' };
     }
 
-    // 4. 更新业务表
+    // 4. 获取第一个审批节点的审批人
+    const { approverId, approverName } = await this.getNextApprover(firstApprovalNode);
+
+    // 5. 更新业务表
     const data = {
       ...updateData,
       status: '2', // 审批中
       currentNodeId: firstApprovalNode.nodeId,
-      currentApproverId: userId,
+      currentNodeName: firstApprovalNode.nodeName,
+      currentApproverId: approverId,
       updateBy: userName,
     };
     const db = ctx.helper.getMasterDB(ctx);
@@ -157,12 +217,15 @@ class ApprovalEngineService extends Service {
         // 下一节点是结束 -> 审批完成
         updateData.status = '3'; // 已通过
         updateData.currentNodeId = null;
+        updateData.currentNodeName = null;
         updateData.currentApproverId = null;
       } else {
-        // 推进到下一审批节点
+        // 推进到下一审批节点，从节点配置获取审批人
+        const nextApprover = await this.getNextApprover(nextNode);
         updateData.status = '2';
         updateData.currentNodeId = nextNode.nodeId;
-        updateData.currentApproverId = userId;
+        updateData.currentNodeName = nextNode.nodeName;
+        updateData.currentApproverId = nextApprover.approverId;
       }
 
       if (updateFn) {
@@ -188,6 +251,7 @@ class ApprovalEngineService extends Service {
       // ===== 驳回 =====
       updateData.status = '4'; // 已驳回
       updateData.currentNodeId = null;
+      updateData.currentNodeName = null;
       updateData.currentApproverId = null;
 
       if (updateFn) {

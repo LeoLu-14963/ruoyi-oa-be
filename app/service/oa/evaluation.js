@@ -132,7 +132,7 @@ class OaSampleEvaluationService extends Service {
       );
       const firstApprovalNode = nodes.find(n => n.nodeType === '1');
       // 从节点配置获取审批人
-      const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(firstApprovalNode);
+      const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(firstApprovalNode, ctx.state.user.userId);
       await ctx.service.oa.application.updateApplicationByTypeAndBusiness('SAMPLE_EVALUATION', evaluationId, {
         status: '2',
         currentNodeId: firstApprovalNode ? firstApprovalNode.nodeId : null,
@@ -189,7 +189,7 @@ class OaSampleEvaluationService extends Service {
           updateData.finishTime = ctx.helper.formatDate(new Date());
         } else {
           // 从下一节点配置获取审批人
-          const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(nextNode);
+          const nextApprover = await ctx.service.oa.approvalEngine.getNextApprover(nextNode, ctx.state.user.userId);
           updateData.status = '2';
           updateData.currentNodeId = nextNode ? nextNode.nodeId : null;
           updateData.currentNodeName = nextNode ? nextNode.nodeName : null;

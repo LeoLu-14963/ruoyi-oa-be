@@ -70,14 +70,22 @@ module.exports = app => {
     @HttpPost('/')
     async add() {
       const { ctx } = this;
-      const data = ctx.request.body;
+      try {
+        const data = ctx.request.body;
 
-      // 添加创建人信息
-      data.createBy = ctx.state.user.userName;
+        // 添加创建人信息
+        data.createBy = ctx.state.user.userName;
 
-      const result = await ctx.service.oa.supplier.insertOaSupplier(data);
+        const result = await ctx.service.oa.supplier.insertOaSupplier(data);
 
-      ctx.body = result;
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('新增供应商管理失败:', err);
+        ctx.body = {
+          code: 500,
+          msg: err.message || '新增供应商管理失败',
+        };
+      }
     }
 
     /**
@@ -89,14 +97,22 @@ module.exports = app => {
     @HttpPut('/')
     async edit() {
       const { ctx } = this;
-      const data = ctx.request.body;
+      try {
+        const data = ctx.request.body;
 
-      // 添加更新人信息
-      data.updateBy = ctx.state.user.userName;
+        // 添加更新人信息
+        data.updateBy = ctx.state.user.userName;
 
-      const result = await ctx.service.oa.supplier.updateOaSupplier(data);
+        const result = await ctx.service.oa.supplier.updateOaSupplier(data);
 
-      ctx.body = result;
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('修改供应商管理失败:', err);
+        ctx.body = {
+          code: 500,
+          msg: err.message || '修改供应商管理失败',
+        };
+      }
     }
 
     /**
@@ -108,12 +124,20 @@ module.exports = app => {
     @HttpDelete('/:supplierIds')
     async remove() {
       const { ctx } = this;
-      const { supplierIds } = ctx.params;
+      try {
+        const { supplierIds } = ctx.params;
 
-      const supplierIdArray = supplierIds.split(',');
-      const result = await ctx.service.oa.supplier.deleteOaSupplierBySupplierIds(supplierIdArray);
+        const supplierIdArray = supplierIds.split(',');
+        const result = await ctx.service.oa.supplier.deleteOaSupplierBySupplierIds(supplierIdArray);
 
-      ctx.body = result;
+        ctx.body = result;
+      } catch (err) {
+        ctx.logger.error('删除供应商管理失败:', err);
+        ctx.body = {
+          code: 500,
+          msg: err.message || '删除供应商管理失败',
+        };
+      }
     }
 
     /**

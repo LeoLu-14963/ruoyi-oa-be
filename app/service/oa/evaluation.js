@@ -2,7 +2,7 @@
  * @Description: 物料样品评估服务层
  * @Author: 愚者
  * @Date: 2026-07-27
- * @Update: 2026-07-28 审批走通用引擎 + 同步统一申请索引表
+ * @Update: 2026-07-30 修复编辑时明细丢失；明细更新改为先删后插并加日志
  */
 
 const Service = require('egg').Service;
@@ -65,21 +65,41 @@ class OaSampleEvaluationService extends Service {
     const { ctx } = this;
     const { details, ...evaluation } = data;
 
+    ctx.logger.info('[updateOaSampleEvaluation] 入参 evaluationId=%s, details=%j', evaluation.evaluationId, details);
+
     const result = await ctx.helper.getMasterDB(ctx).oaSampleEvaluationMapper.updateOaSampleEvaluation([], evaluation);
 
     if (details !== undefined) {
-      await ctx.helper.getMasterDB(ctx).oaSampleEvaluationDetailMapper.deleteOaSampleEvaluationDetailByEvaluationId([], { evaluationId: evaluation.evaluationId });
+      const db = ctx.helper.getMasterDB(ctx);
+      const evaluationId = evaluation.evaluationId;
+
+      // 先删除旧明细
+      const delResult = await db.oaSampleEvaluationDetailMapper.deleteOaSampleEvaluationDetailByEvaluationId([], { evaluationId });
+      ctx.logger.info('[updateOaSampleEvaluation] 删除旧明细 evaluationId=%s, 影响行数=%s', evaluationId, delResult);
+
       if (details && details.length > 0) {
         for (const detail of details) {
-          detail.evaluationId = evaluation.evaluationId;
+          detail.evaluationId = evaluationId;
           detail.updateBy = evaluation.updateBy;
           if (!detail.detailId) {
             detail.createBy = evaluation.updateBy;
-            await ctx.helper.getMasterDB(ctx).oaSampleEvaluationDetailMapper.insertOaSampleEvaluationDetail([], detail);
+            const insertResult = await db.oaSampleEvaluationDetailMapper.insertOaSampleEvaluationDetail([], detail);
+            ctx.logger.info('[updateOaSampleEvaluation] 插入明细 evaluationId=%s, result=%s, detail=%j', evaluationId, insertResult, detail);
           } else {
-            await ctx.helper.getMasterDB(ctx).oaSampleEvaluationDetailMapper.updateOaSampleEvaluationDetail([], detail);
+            // 保留 detailId 时尝试更新；不存在则插入
+            const exists = await ctx.helper.getDB(ctx).oaSampleEvaluationDetailMapper.selectOaSampleEvaluationDetailByDetailId([], { detailId: detail.detailId });
+            if (exists) {
+              const updateResult = await db.oaSampleEvaluationDetailMapper.updateOaSampleEvaluationDetail([], detail);
+              ctx.logger.info('[updateOaSampleEvaluation] 更新明细 detailId=%s, result=%s', detail.detailId, updateResult);
+            } else {
+              detail.createBy = evaluation.updateBy;
+              const insertResult = await db.oaSampleEvaluationDetailMapper.insertOaSampleEvaluationDetail([], detail);
+              ctx.logger.info('[updateOaSampleEvaluation] 插入明细（detailId不存在）evaluationId=%s, result=%s, detail=%j', evaluationId, insertResult, detail);
+            }
           }
         }
+      } else {
+        ctx.logger.info('[updateOaSampleEvaluation] 无明细需要保存 evaluationId=%s', evaluationId);
       }
     }
 
